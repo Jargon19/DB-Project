@@ -1,0 +1,72 @@
+CREATE DATABASE university_events;
+USE university_events;
+
+CREATE TABLE Universities (
+    university_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    location VARCHAR(255),
+    description TEXT,
+    num_students INT,
+    image_url VARCHAR(255)
+);
+
+CREATE TABLE Users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('super_admin', 'admin', 'student') NOT NULL,
+    university_id INT,
+    FOREIGN KEY (university_id) REFERENCES Universities(university_id) ON DELETE SET NULL
+);
+
+CREATE TABLE RSOs (
+    rso_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    admin_id INT NOT NULL,
+    university_id INT NOT NULL,
+    status ENUM('pending', 'approved') DEFAULT 'pending',
+    FOREIGN KEY (admin_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (university_id) REFERENCES Universities(university_id) ON DELETE CASCADE
+);
+
+CREATE TABLE Events (
+    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    category ENUM('social', 'fundraising', 'tech_talk') NOT NULL,
+    description TEXT,
+    event_time DATETIME NOT NULL,
+    location_name VARCHAR(255) NOT NULL,
+    latitude DECIMAL(10,8),
+    longitude DECIMAL(11,8),
+    contact_phone VARCHAR(20),
+    contact_email VARCHAR(255),
+    visibility ENUM('public', 'private', 'rso') NOT NULL,
+    approved BOOLEAN DEFAULT FALSE,
+    rso_id INT,
+    university_id INT NOT NULL,
+    admin_id INT NOT NULL,
+    FOREIGN KEY (rso_id) REFERENCES RSOs(rso_id) ON DELETE SET NULL,
+    FOREIGN KEY (university_id) REFERENCES Universities(university_id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES Users(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE Comments (
+    comment_id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    user_id INT NOT NULL,
+    comment_text TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE Ratings (
+    rating_id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    user_id INT NOT NULL,
+    rating INT CHECK (rating BETWEEN 1 AND 5),
+    FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+);
+
