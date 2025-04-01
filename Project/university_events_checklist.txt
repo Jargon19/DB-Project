@@ -70,3 +70,11 @@ CREATE TABLE Ratings (
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
 
+
+
+User = root
+Password = Password
+
+(I know... very secure)
+
+I dont expect this to be the final iteration. I dont even know if we are gonna use mysql. I just wanted to get started on something.
