@@ -1,17 +1,24 @@
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom"; // Importing routing components
-import { useState } from "react"; // Importing React hooks
-import LoginPage from "./pages/LoginPage"; // Importing custom components
+import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from "react-router-dom";
+import { useState } from "react";
+import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import Dashboard from "./pages/Dashboard";
 import EventPage from "./pages/EventPage";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
-import ProtectedRoute from "./components/ProtectedRoute";
-import "./App.css"; // Importing styles
+import "./App.css";
 
 // Main App component
 function App() {
   const [user, setUser] = useState(null); // Defining state for the user
+
+    // Protected routes wrapper
+    const ProtectedLayout = () => {
+      if (!user) {
+        return <Navigate to="/login" replace />;
+      }
+      return <Outlet />;
+    }; 
 
   return (
     <Router>
@@ -21,22 +28,11 @@ function App() {
         <Route path="/" element={<Navigate to="/dashboard" />} />
         <Route path="/login" element={<LoginPage setUser={setUser} />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute user={user}>
-              <Dashboard user={user} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/event/:id"
-          element={
-            <ProtectedRoute user={user}>
-              <EventPage user={user} />
-            </ProtectedRoute>
-          }
-        />
+        <Route element={<ProtectedLayout />}>
+          <Route path="/dashboard" element={<Dashboard user={user} />} />
+          <Route path="/event/:id" element={<EventPage user={user} />} />
+        </Route>
+        */
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>

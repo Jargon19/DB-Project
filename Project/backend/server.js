@@ -1,88 +1,149 @@
+// server.js
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mysql = require('mysql2/promise');
 
-// POST /api/auth/register (User Registration)
-app.post('/api/auth/register', (req, res) => {
-  const { name, email, password, role, university } = req.body;
+// Initialize Express app
+const app = express();
 
-  // Simple validation (e.g., check if email and password are provided)
-  if (!name || !email || !password || !role || !university) {
-    return res.status(400).json({ error: 'Please provide all fields' });
-  }
+// Middleware
+app.use(cors());
+app.use(express.json());
 
-  // Hash the password
-  bcrypt.hash(password, 10, (err, hashedPassword) => {
-    if (err) {
-      return res.status(500).json({ error: 'Error hashing password' });
-    }
-
-    // Insert user into database
-    const query = `INSERT INTO users (name, email, password, role, university) VALUES (?, ?, ?, ?, ?)`;
-    db.query(query, [name, email, hashedPassword, role, university], (err, result) => {
-      if (err) {
-        return res.status(500).json({ error: 'Error inserting user into database' });
-      }
-      res.status(201).json({ message: 'User registered successfully' });
-    });
-  });
+const pool = mysql.createPool({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASS || 'Password', 
+  database: process.env.DB_NAME || 'university_events',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
-// POST /api/auth/login (User Login)
-app.post('/api/auth/login', (req, res) => {
+// Test database connection
+pool.getConnection()
+  .then(conn => {
+    console.log('Database connected');
+    conn.release();
+  })
+  .catch(err => {
+    console.error('Database connection failed:', err);
+  });
+
+// POST /api/auth/register
+app.post('/api/auth/register', async (req, res) => {
+  const { name, email, password, role, university_id } = req.body;
+
+  // Basic validation
+  if (!name || !email || !password || !role || !university_id) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+
+  try {
+    // Check if university exists
+    const [university] = await pool.query('SELECT 1 FROM universities WHERE university_id = ?', [university_id]);
+    if (!university) return res.status(400).json({ error: 'Invalid university' });
+
+    // Check for existing email
+    const [existing] = await pool.query('SELECT 1 FROM users WHERE email = ?', [email]);
+    if (existing) return res.status(400).json({ error: 'Email already exists' });
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Create user
+    const [result] = await pool.query(
+      'INSERT INTO users (name, email, password_hash, role, university_id) VALUES (?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, role, university_id]
+    );
+
+    res.status(201).json({
+      id: result.insertId,
+      name,
+      email,
+      role
+    });
+    
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+// POST /api/auth/login
+app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ error: 'Please provide email and password' });
+    return res.status(400).json({ error: 'Email and password required' });
   }
 
-  // Fetch user from database by email
-  const query = `SELECT * FROM users WHERE email = ?`;
-  db.query(query, [email], (err, results) => {
-    if (err || results.length === 0) {
-      return res.status(400).json({ error: 'Invalid email or password' });
-    }
+  try {
+    // Get user with university info
+    const [users] = await pool.query(`
+      SELECT u.user_id, u.name, u.email, u.role, u.password_hash, 
+             u.university_id, un.name AS university_name
+      FROM users u
+      LEFT JOIN universities un ON u.university_id = un.university_id
+      WHERE u.email = ?
+    `, [email]);
 
-    const user = results[0];
+    if (!users.length) return res.status(401).json({ error: 'Invalid credentials' });
+    
+    const user = users[0];
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    if (!validPassword) return res.status(401).json({ error: 'Invalid credentials' });
 
-    // Compare the provided password with the hashed password
-    bcrypt.compare(password, user.password, (err, isMatch) => {
-      if (err || !isMatch) {
-        return res.status(400).json({ error: 'Invalid email or password' });
-      }
+    // Create token payload
+    const payload = {
+      userId: user.user_id,
+      role: user.role,
+      universityId: user.university_id
+    };
 
-      // Create JWT token
-      const payload = {
-        userId: user.id,
-        role: user.role
-      };
+    // Generate tokens
+    const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+    
+    // Omit sensitive data
+    const { password_hash, ...userData } = user;
 
-      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-      // Return the token in the response
-      res.json({ token });
+    res.json({
+      ...userData,
+      accessToken
     });
-  });
-});
 
-// Protected route (only accessible with a valid JWT token)
-app.get('/api/auth/protected', authenticateToken, (req, res) => {
-  res.json({ message: 'This is a protected route', userId: req.user.userId });
-});
-
-// Middleware to authenticate JWT token
-function authenticateToken(req, res, next) {
-  const token = req.header('Authorization') && req.header('Authorization').split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
   }
+});
 
-  // Verify the token
+// Improved auth middleware
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.split(' ')[1];
+  
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid token' });
-    }
-    req.user = decoded; // Add decoded user info to request object
-    next(); // Proceed to the next middleware or route handler
+    if (err) return res.status(403).json({ error: 'Invalid token' });
+    
+    // Add fresh user data to request
+    pool.query('SELECT user_id, role, university_id FROM users WHERE user_id = ?', [decoded.userId])
+      .then(([users]) => {
+        if (!users.length) return res.status(403).json({ error: 'User not found' });
+        req.user = users[0];
+        next();
+      })
+      .catch(error => {
+        console.error('Auth middleware error:', error);
+        res.status(500).json({ error: 'Authentication failed' });
+      });
   });
 }
+
+const PORT = 3000; // This is the backend port
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

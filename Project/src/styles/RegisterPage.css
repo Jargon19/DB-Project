@@ -1,0 +1,84 @@
+/* Shared form styles */
+.container {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   padding-top: 10vh;
+   min-height: 100vh;
+   gap: 1.5rem;
+ }
+ 
+ form {
+   background: white;
+   padding: 1.5rem;
+   border-radius: 8px;
+   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+   width: 100%;
+   max-width: 320px;
+   display: flex;
+   flex-direction: column;
+   gap: 1rem;
+ }
+ 
+ input, .select-field {
+   width: 100%;
+   padding: 10px;
+   border: 1px solid #ddd;
+   border-radius: 4px;
+   font-size: 14px;
+ }
+ 
+/* Modify the existing .select-field rule */
+.select-field {
+   appearance: none;
+   background-repeat: no-repeat;
+   background-position: right 10px center;
+   background-size: 1em;
+   margin-top: 0.25rem;
+   margin-bottom: 1.5rem; /* Increased from 1rem to 1.5rem */
+ }
+ 
+ button {
+   padding: 10px;
+   background-color: #4a90e2;
+   color: white;
+   border: none;
+   border-radius: 4px;
+   cursor: pointer;
+   transition: background-color 0.3s;
+ }
+ 
+button:hover {
+   background-color: #357ab8;
+}
+ 
+button:disabled {
+   background-color: #cccccc;
+   cursor: not-allowed;
+}
+ 
+.error-message {
+   color: #d32f2f;
+   font-size: 0.85rem;
+   padding: 8px 12px;
+   background-color: #fde8e8;
+   border-radius: 4px;
+   border: 1px solid #f5c6cb;
+   text-align: center;
+   width: 100%;
+   max-width: 320px;
+}
+
+.role-selection {
+   margin-bottom: 1.5rem; /* Adds space below the select dropdown */
+   padding: 1rem;
+ }
+ 
+ .role-label {
+   margin-bottom: 0.5rem;
+   font-size: 0.9rem;
+   color: #555;
+ }
+ .university-id-field {
+   margin-top: 1rem;
+ }
