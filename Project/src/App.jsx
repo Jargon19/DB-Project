@@ -3,36 +3,42 @@ import { useState } from "react";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import Dashboard from "./pages/Dashboard";
-import EventPage from "./pages/EventPage";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
+import SuperAdminPage from "./pages/SuperAdminPage";
+import AdminPage from "./pages/AdminPage";
+import StudentPage from "./pages/StudentPage";
 import "./App.css";
+import { useEffect } from "react";
 
 // Main App component
 function App() {
-  const [user, setUser] = useState(null); // Defining state for the user
+  const [user, setUser] = useState(null);
 
-    // Protected routes wrapper
-    const ProtectedLayout = () => {
-      if (!user) {
-        return <Navigate to="/login" replace />;
-      }
-      return <Outlet />;
-    }; 
+  const ProtectedLayout = () => {
+    if (!user) {
+      return <Navigate to="/login" replace />;
+    }
+    return <Outlet />;
+  };
 
   return (
     <Router>
       <Navbar user={user} setUser={setUser} />
       <Routes>
-        {/* Routing paths */}
         <Route path="/" element={<Navigate to="/dashboard" />} />
         <Route path="/login" element={<LoginPage setUser={setUser} />} />
         <Route path="/register" element={<RegisterPage />} />
+        
         <Route element={<ProtectedLayout />}>
           <Route path="/dashboard" element={<Dashboard user={user} />} />
-          <Route path="/event/:id" element={<EventPage user={user} />} />
+
+          {/* Role-based dashboards */}
+          <Route path="/superadmin" element={<SuperAdminPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/student" element={<StudentPage />} />
         </Route>
-        */
+
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>

@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/LoginPage.css";
+import "../styles/AuthPages.css";
 
 function LoginPage({ setUser }) {
-  const [email, setEmail] = useState("");
+  const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("student"); // Default
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -17,69 +18,83 @@ function LoginPage({ setUser }) {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, role }),
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || "Login failed");
       }
 
-      // Store the access token in localStorage
       localStorage.setItem("accessToken", data.accessToken);
 
-      // Update user context with received data
       setUser({
         id: data.user_id,
         email: data.email,
         name: data.name,
         role: data.role,
         universityId: data.university_id,
-        universityName: data.university_name
+        universityName: data.university_name,
       });
 
-      // Redirect to dashboard
-      navigate("/dashboard");
-    } catch (err) {
-      setError(err.message);
-      if (err.message.includes("credentials")) {
-        setError("Invalid email or password");
-      } else {
-        setError("Login failed.");
+      // Navigate based on role
+      switch (data.role) {
+        case "super_admin":
+          navigate("/super-admin");
+          break;
+        case "admin":
+          navigate("/admin");
+          break;
+        case "student":
+          navigate("/student");
+          break;
+        default:
+          navigate("/dashboard");
       }
+    } catch (err) {
+      setError("Invalid login credentials.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="container">
-      <h2>Login</h2>
-      {error && <div className="error-message">{error}</div>}
-      <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
+    <div className="auth-container">
+      <div className="auth-box">
+        <div className="auth-header">
+          <span className="auth-icon">👤</span>
+          <h2 className="auth-title">User Login</h2>
+        </div>
+        {error && <p className="auth-error">{error}</p>}
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="User ID"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <select value={role} onChange={(e) => setRole(e.target.value)} required>
+            <option value="student">Student</option>
+            <option value="admin">Admin</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+          <button type="submit" disabled={loading}>
+            {loading ? "Logging in..." : "LOGIN"}
+          </button>
+        </form>
+      </div>
     </div>
+
   );
 }
 
