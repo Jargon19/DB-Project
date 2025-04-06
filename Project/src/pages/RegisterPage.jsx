@@ -6,9 +6,11 @@ function RegisterPage({ setUser }) {
   const [formData, setFormData] = useState({
     user_id: "",
     name: "",
+    email: "",
     password: "",
     confirmPassword: "",
     role: "student",
+    university_id: "",
   });
 
   const [error, setError] = useState("");
@@ -89,6 +91,14 @@ function RegisterPage({ setUser }) {
             required
           />
           <input
+            type="email"
+            name="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+          <input
             type="password"
             name="password"
             placeholder="Password"
@@ -114,6 +124,14 @@ function RegisterPage({ setUser }) {
             <option value="admin">Admin</option>
             <option value="super_admin">Super Admin</option>
           </select>
+          <input
+            type="text"
+            name="university_id"
+            placeholder="University ID"
+            value={formData.university_id}
+            onChange={handleChange}
+            required
+          />
           <button type="submit" disabled={loading}>
             {loading ? "Registering..." : "REGISTER"}
           </button>
