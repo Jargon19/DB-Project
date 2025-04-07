@@ -6,16 +6,18 @@ const bodyParser = require('body-parser'); // Parse JSON
 const db = require('./db'); // MySQL DB Connection
 require('dotenv').config(); 
 
-const app = express();
+
 const PORT = process.env.PORT || 3000;
+
+// Initialize Express app
+const app = express();
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 const mysql = require('mysql2/promise');
 
-// Initialize Express app
-const app = express();
+
 
 // Middleware
 app.use(cors());
