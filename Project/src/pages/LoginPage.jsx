@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/AuthPages.css";
 
 function LoginPage({ setUser }) {
-  const [userId, setUserId] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("student"); // Default
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ function LoginPage({ setUser }) {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, password, role }),
+        body: JSON.stringify({ username, password, role }),
       });
 
       const data = await response.json();
@@ -32,6 +32,7 @@ function LoginPage({ setUser }) {
 
       setUser({
         id: data.user_id,
+        username: data.username,
         email: data.email,
         name: data.name,
         role: data.role,
@@ -71,9 +72,9 @@ function LoginPage({ setUser }) {
         <form onSubmit={handleSubmit}>
           <input
             type="text"
-            placeholder="User ID"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             required
           />
           <input

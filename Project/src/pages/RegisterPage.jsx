@@ -4,7 +4,7 @@ import "../styles/AuthPages.css";
 
 function RegisterPage({ setUser }) {
   const [formData, setFormData] = useState({
-    user_id: "",
+    username: "",
     name: "",
     email: "",
     password: "",
@@ -76,9 +76,9 @@ function RegisterPage({ setUser }) {
         <form onSubmit={handleSubmit}>
           <input
             type="text"
-            name="user_id"
-            placeholder="User ID"
-            value={formData.user_id}
+            name="username"
+            placeholder="Username"
+            value={formData.username}
             onChange={handleChange}
             required
           />

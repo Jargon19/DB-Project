@@ -16,6 +16,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 const mysql = require('mysql2/promise');
+const { unstable_HistoryRouter } = require('react-router-dom');
 
 // Middleware
 app.use(cors());
@@ -43,11 +44,11 @@ pool.getConnection()
 
 // POST /api/auth/register
 app.post('/api/auth/register', async (req, res) => {
-  const { user_id, name, email, password, confirmPassword, role, university_id } = req.body;
+  const { username, name, email, password, confirmPassword, role, university_id } = req.body;
 
   console.log('Register body:', req.body);
 
-  if (!name || !email || !password || !role || !university_id || !user_id) {
+  if (!name || !email || !password || !role || !university_id || !username) {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
@@ -61,8 +62,8 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const [result] = await pool.query(
-      'INSERT INTO users (name, email, password_hash, role, university_id) VALUES (?, ?, ?, ?, ?)',
-      [name, email, hashedPassword, role, university_id]
+      'INSERT INTO users (username, name, email, password_hash, role, university_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [username, name, email, hashedPassword, role, university_id]
     );
 
     res.status(201).json({
@@ -80,23 +81,23 @@ app.post('/api/auth/register', async (req, res) => {
 
 // POST /api/auth/login
 app.post('/api/auth/login', async (req, res) => {
-  const { userId, password, role} = req.body;
+  const { username, password, role} = req.body;
 
   console.log('Login request body:', req.body);
 
-  if (!userId || !password || !role) {
+  if (!username || !password || !role) {
     return res.status(400).json({ error: 'Email, password and role are required' });
   }
 
   try {
     // Get user with university info
     const [users] = await pool.query(`
-      SELECT u.user_id, u.name, u.email, u.role, u.password_hash, 
-             u.university_id, un.name AS university_name
+      SELECT u.user_id, u.username, u.name, u.email, u.role, u.password_hash, 
+         u.university_id, un.name AS university_name
       FROM users u
       LEFT JOIN universities un ON u.university_id = un.university_id
-      WHERE u.user_id = ?
-    `, [userId]);
+      WHERE u.username = ?
+    `, [username]);
 
     if (users.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
     
