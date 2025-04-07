@@ -8,6 +8,8 @@ import Navbar from "./components/Navbar";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import AdminPage from "./pages/AdminPage";
 import StudentPage from "./pages/StudentPage";
+import RSOPage from "./pages/RSOPage";
+import ApproveRSOPage from "./pages/ApproveRSOPage";
 import "./App.css";
 import { useEffect } from "react";
 
@@ -37,6 +39,8 @@ function App() {
           <Route path="/superadmin" element={<SuperAdminPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/student" element={<StudentPage />} />
+          <Route path="/rso" element={<RSOPage />} />
+          <Route path="/approve-rsos" element={<ApproveRSOPage />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

@@ -1,22 +1,39 @@
-// Navbar.jsx
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 function Navbar({ user, setUser }) {
+  const location = useLocation();
+  const dashboardPath = user?.role === "super_admin" ? "superadmin" : user?.role;
+
   return (
     <nav className="navbar">
       <div className="logo">Event Manager</div>
       <div className="nav-links">
         {user ? (
-          <button onClick={() => setUser(null)}>Logout</button>
+          <>
+            {location.pathname === "/rso" ? (
+              <Link to={`/${dashboardPath}`} className="nav-link">Dashboard</Link>
+            ) : (
+              <Link to="/rso" className="nav-link">Create RSO</Link>
+            )}
+            {user?.role === "super_admin" && (
+              location.pathname === "/approve-rsos" ? (
+                <Link to="/superadmin" className="nav-link">Dashboard</Link>
+              ) : (
+                <Link to="/approve-rsos" className="nav-link">Approve RSOs</Link>
+              )
+            )}
+            <button className="logout-button" onClick={() => setUser(null)}>Logout</button>
+          </>
         ) : (
           <>
-            <Link to="/login">Login</Link>
-            <Link to="/register">Register</Link>
+            <Link to="/login" className="nav-link">Login</Link>
+            <Link to="/register" className="nav-link">Register</Link>
           </>
         )}
       </div>
     </nav>
   );
 }
+
 
 export default Navbar;

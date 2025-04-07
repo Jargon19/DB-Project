@@ -126,6 +126,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// POST /api/events/create
 app.post('/api/events/create', authenticateToken, async (req, res) => {
   const { name, description, location, datetime, category, contactPhone, contactEmail, visibility } = req.body;
 
@@ -152,6 +153,45 @@ app.post('/api/events/create', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/events/get
+app.get('/api/events/get', authenticateToken, async (req, res) => {
+  const { userId, universityId } = req.user;
+
+  // This is for when we add RSOs
+  /* try {
+    const [events] = await pool.query(
+      `
+      SELECT DISTINCT e.*
+      FROM events e
+      LEFT JOIN rso_members rm ON e.rso_id = rm.rso_id
+      WHERE 
+        e.visibility = 'public'
+        OR (e.visibility = 'private' AND e.university_id = ?)
+        OR (e.visibility = 'RSO' AND rm.user_id = ?)
+      `,
+      [universityId, userId]
+    ); */
+
+
+  try {
+    const [events] = await pool.query(
+      `
+      SELECT *
+      FROM events
+      WHERE 
+        visibility = 'public'
+        OR (visibility = 'private' AND university_id = ?)
+      `,
+      [universityId]
+    );
+    res.json(events);
+  } catch (err) {
+    console.error("Failed to fetch student events:", err);
+    res.status(500).json({ error: "Failed to fetch events" });
+  }
+});
+
+// POST /api/universities/create
 app.post('/api/universities/create', async (req, res) => {
   const { name, location, description, students } = req.body;
 
@@ -173,6 +213,88 @@ app.post('/api/universities/create', async (req, res) => {
   }
 });
 
+// POST /api/rso/create
+app.post('/api/rso/create', authenticateToken, async (req, res) => {
+  const { name, description } = req.body;
+  const { userId, universityId } = req.user;
+
+  if (!name || !description) {
+    return res.status(400).json({ error: "RSO name and description are required." });
+  }
+
+  try {
+    const [existing] = await pool.query(
+      "SELECT 1 FROM rsos WHERE name = ?",
+      [name]
+    );
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "RSO name already exists." });
+    }
+
+    // change status from pending to approved later
+    const [result] = await pool.query(
+      `INSERT INTO rsos (name, admin_id, university_id, status)
+       VALUES (?, ?, ?, ?)`,
+      [name, userId, universityId, "pending"]
+    );
+
+    res.status(201).json({ message: "RSO created successfully. Waiting for approval by super admin.", rsoId: result.insertId });
+  } catch (err) {
+    console.error("RSO creation error:", err);
+    res.status(500).json({ error: "Failed to create RSO" });
+  }
+});
+
+// POST /api/rso/approve
+app.post('/api/rso/approve', authenticateToken, async (req, res) => {
+  const { rsoId } = req.body;
+  const { role } = req.user;
+
+  if (role !== "super_admin") {
+    return res.status(403).json({ error: "Access denied." });
+  }
+
+  if (!rsoId) return res.status(400).json({ error: "Missing RSO ID." });
+
+  try {
+    const [result] = await pool.query(
+      `UPDATE rsos SET status = 'approved' WHERE rso_id = ?`,
+      [rsoId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "RSO not found" });
+    }
+
+    res.json({ message: "RSO approved." });
+  } catch (err) {
+    console.error("Error approving RSO:", err);
+    res.status(500).json({ error: "Failed to approve RSO" });
+  }
+});
+
+// GET /api/rso.pending
+app.get('/api/rso/pending', authenticateToken, async (req, res) => {
+  const { role } = req.user;
+
+  if (role !== "super_admin") {
+    return res.status(403).json({ error: "Access denied." });
+  }
+
+  try {
+    const [rsos] = await pool.query(
+      `SELECT rso_id, name, admin_id, university_id, status
+       FROM rsos
+       WHERE status = 'pending'`
+    );
+
+    res.json(rsos);
+  } catch (err) {
+    console.error("Error fetching pending RSOs:", err);
+    res.status(500).json({ error: "Failed to fetch RSOs" });
+  }
+});
+
 function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization;
   const token = authHeader?.split(' ')[1];
@@ -184,7 +306,7 @@ function authenticateToken(req, res, next) {
     req.user = decoded; // Attach decoded token data to req.user
     next();
   });
-}
+};
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
