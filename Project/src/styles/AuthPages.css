@@ -1,0 +1,82 @@
+/* AuthPages.css */
+
+.auth-container {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #003366, #005c99);
+  }
+  
+  .auth-box {
+    background-color: #012a4a;
+    padding: 3rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    width: 100%;
+    max-width: 420px;
+    color: white;
+    box-sizing: border-box;
+  }
+  
+  .auth-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  .auth-icon {
+    font-size: 2.5rem;
+  }
+  
+  .auth-title {
+    font-size: 1.75rem;
+    font-weight: bold;
+    margin: 0;
+  }
+  
+  .auth-error {
+    background: #ff4444;
+    padding: 0.5rem;
+    border-radius: 5px;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  
+  form input,
+  form select,
+  form textarea {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 1rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    background-color: #e1e1e1;
+    color: black;
+  }
+  
+  form textarea {
+    resize: vertical;
+  }
+  
+  button {
+    width: 100%;
+    padding: 0.6rem;
+    background-color: #0077cc;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  button:hover {
+    background-color: #005999;
+  }
+  
