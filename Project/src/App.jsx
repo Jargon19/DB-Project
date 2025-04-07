@@ -28,7 +28,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" />} />
         <Route path="/login" element={<LoginPage setUser={setUser} />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/register" element={<RegisterPage setUser={setUser}/>} />
         
         <Route element={<ProtectedLayout />}>
           <Route path="/dashboard" element={<Dashboard user={user} />} />

@@ -17,8 +17,6 @@ app.use(cors());
 app.use(bodyParser.json());
 const mysql = require('mysql2/promise');
 
-
-
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -26,7 +24,7 @@ app.use(express.json());
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS || 'Password', 
+  password: process.env.DB_PASS || '', 
   database: process.env.DB_NAME || 'university_events',
   waitForConnections: true,
   connectionLimit: 10,
@@ -45,26 +43,23 @@ pool.getConnection()
 
 // POST /api/auth/register
 app.post('/api/auth/register', async (req, res) => {
-  const { name, email, password, role, university_id } = req.body;
+  const { user_id, name, email, password, confirmPassword, role, university_id } = req.body;
 
-  // Basic validation
-  if (!name || !email || !password || !role || !university_id) {
+  console.log('Register body:', req.body);
+
+  if (!name || !email || !password || !role || !university_id || !user_id) {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
   try {
-    // Check if university exists
     const [university] = await pool.query('SELECT 1 FROM universities WHERE university_id = ?', [university_id]);
     if (!university) return res.status(400).json({ error: 'Invalid university' });
 
-    // Check for existing email
     const [existing] = await pool.query('SELECT 1 FROM users WHERE email = ?', [email]);
-    if (existing) return res.status(400).json({ error: 'Email already exists' });
+    if (existing.length > 0) return res.status(400).json({ error: 'Email already exists' });
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user
     const [result] = await pool.query(
       'INSERT INTO users (name, email, password_hash, role, university_id) VALUES (?, ?, ?, ?, ?)',
       [name, email, hashedPassword, role, university_id]
@@ -85,10 +80,12 @@ app.post('/api/auth/register', async (req, res) => {
 
 // POST /api/auth/login
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { userId, password, role} = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password required' });
+  console.log('Login request body:', req.body);
+
+  if (!userId || !password || !role) {
+    return res.status(400).json({ error: 'Email, password and role are required' });
   }
 
   try {
@@ -98,10 +95,10 @@ app.post('/api/auth/login', async (req, res) => {
              u.university_id, un.name AS university_name
       FROM users u
       LEFT JOIN universities un ON u.university_id = un.university_id
-      WHERE u.email = ?
-    `, [email]);
+      WHERE u.user_id = ?
+    `, [userId]);
 
-    if (!users.length) return res.status(401).json({ error: 'Invalid credentials' });
+    if (users.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
     
     const user = users[0];
     const validPassword = await bcrypt.compare(password, user.password_hash);
@@ -114,10 +111,7 @@ app.post('/api/auth/login', async (req, res) => {
       universityId: user.university_id
     };
 
-    // Generate tokens
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
-    
-    // Omit sensitive data
     const { password_hash, ...userData } = user;
 
     res.json({
@@ -146,3 +140,7 @@ function authenticateToken(req, res, next) {
     next(); // Proceed to the next middleware or route handler
   });
 }
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
