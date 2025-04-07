@@ -1,5 +1,17 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); // Password hashing
 const jwt = require('jsonwebtoken');
+const express = require('express'); // Web Server & routing
+const cors = require('cors'); // Allows for different ports to access backend
+const bodyParser = require('body-parser'); // Parse JSON
+const db = require('./db'); // MySQL DB Connection
+require('dotenv').config(); 
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(bodyParser.json());
 
 // POST /api/auth/register (User Registration)
 app.post('/api/auth/register', (req, res) => {
@@ -86,3 +98,20 @@ function authenticateToken(req, res, next) {
     next(); // Proceed to the next middleware or route handler
   });
 }
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+// Shutdown (CTRL+C)
+process.on('SIGINT', () => {
+  db.end((err) => {
+    if (err) {
+      console.error('Error disconnecting from DB:', err);
+    } else {
+      console.log('Disconnected from database.');
+    }
+    process.exit();
+  });
+});
