@@ -43,7 +43,7 @@ function LoginPage({ setUser }) {
       // Navigate based on role
       switch (data.role) {
         case "super_admin":
-          navigate("/super-admin");
+          navigate("/superadmin");
           break;
         case "admin":
           navigate("/admin");

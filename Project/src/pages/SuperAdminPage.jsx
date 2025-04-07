@@ -4,6 +4,8 @@ import "../styles/AuthPages.css";
 function SuperAdminPage() {
   const [universityName, setUniversityName] = useState("");
   const [location, setLocation] = useState("");
+  const [description, setDescription] = useState(""); 
+  const [students, setStudents] = useState("");
   const [message, setMessage] = useState("");
 
   const handleCreateUniversity = async (e) => {
@@ -17,6 +19,8 @@ function SuperAdminPage() {
         body: JSON.stringify({
           name: universityName,
           location,
+          description,
+          students,
         }),
       });
 
@@ -27,6 +31,8 @@ function SuperAdminPage() {
       setMessage("✅ University created successfully!");
       setUniversityName("");
       setLocation("");
+      setDescription("");
+      setStudents("");
     } catch (err) {
       setMessage("❌ Error: " + err.message);
     }
@@ -51,6 +57,20 @@ function SuperAdminPage() {
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             required
+          />
+          <input
+            type="number"
+            placeholder="Num. of Students"
+            value={students}
+            onChange={(e) => setStudents(e.target.value)}
+            min="0"
+            step="1"
+          />
+          <textarea
+            placeholder="University Description (optional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
           />
           <button type="submit">Create University</button>
         </form>

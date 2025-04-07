@@ -8,6 +8,9 @@ function AdminPage() {
     location: "",
     datetime: "",
     category: "",
+    contactPhone: "",
+    contactEmail: "",
+    visibility: "",
   });
 
   const [message, setMessage] = useState("");
@@ -21,10 +24,15 @@ function AdminPage() {
     e.preventDefault();
     setMessage("");
 
+    const token = localStorage.getItem("accessToken");
+
     try {
       const response = await fetch("/api/events/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(eventData),
       });
 
@@ -39,6 +47,9 @@ function AdminPage() {
         location: "",
         datetime: "",
         category: "",
+        contactPhone: "",
+        contactEmail: "",
+        visibility: "",
       });
     } catch (err) {
       setMessage("❌ Error: " + err.message);
@@ -59,6 +70,19 @@ function AdminPage() {
             onChange={handleChange}
             required
           />
+          <select
+            name="visibility"
+            value={eventData.visibility}
+            onChange={handleChange}
+            required
+          >
+            <option value="" disabled hidden>
+              Select Visibility
+            </option>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+            <option value="RSO">RSO</option>
+          </select>
           <input
             type="text"
             name="location"
@@ -79,6 +103,22 @@ function AdminPage() {
             name="category"
             placeholder="Category (e.g. social, private)"
             value={eventData.category}
+            onChange={handleChange}
+            required
+          />
+          <input
+            type="email"
+            name="contactEmail"
+            placeholder="Contact Email"
+            value={eventData.contactEmail}
+            onChange={handleChange}
+            required
+          />
+          <input
+            type="tel"
+            name="contactPhone"
+            placeholder="Contact Phone Number"
+            value={eventData.contactPhone}
             onChange={handleChange}
             required
           />

@@ -126,19 +126,63 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Improved auth middleware
+app.post('/api/events/create', authenticateToken, async (req, res) => {
+  const { name, description, location, datetime, category, contactPhone, contactEmail, visibility } = req.body;
+
+  console.log("🧾 Incoming event data:", req.body);
+
+  const { userId, universityId } = req.user;
+
+  if (!name || !description || !location || !datetime || !category || !contactPhone || !contactEmail || !visibility) {
+    return res.status(400).json({ error: "All fields are required." });
+  }
+
+  try {
+    const [result] = await pool.query(
+      `INSERT INTO events 
+        (name, description, location_name, event_time, category, contact_phone, contact_email, visibility, admin_id, university_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name, description, location, datetime, category, contactPhone, contactEmail, visibility, userId, universityId]
+    );
+
+    res.status(201).json({ message: "Event created successfully", eventId: result.insertId });
+  } catch (error) {
+    console.error("Event creation error:", error);
+    res.status(500).json({ error: "Failed to create event" });
+  }
+});
+
+app.post('/api/universities/create', async (req, res) => {
+  const { name, location, description, students } = req.body;
+
+  if (!name || !location) {
+    return res.status(400).json({ error: "All fields are required." });
+  }
+
+  try {
+    const [result] = await pool.query(
+      `INSERT INTO universities (name, location, description, num_students)
+       VALUES (?, ?, ?, ?)`,
+      [name, location, description || null, students || null]
+    );
+
+    res.status(201).json({ message: "University created successfully", universityId: result.insertId });
+  } catch (error) {
+    console.error("University creation error:", error);
+    res.status(500).json({ error: "Failed to create university" });
+  }
+});
+
 function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization;
   const token = authHeader?.split(' ')[1];
-  
+
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid token' });
-    }
-    req.user = decoded; // Add decoded user info to request object
-    next(); // Proceed to the next middleware or route handler
+    if (err) return res.status(403).json({ error: 'Invalid token' });
+    req.user = decoded; // Attach decoded token data to req.user
+    next();
   });
 }
 
