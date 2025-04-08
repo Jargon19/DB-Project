@@ -11,6 +11,7 @@ import StudentPage from "./pages/StudentPage";
 import RSOPage from "./pages/RSOPage";
 import ApproveRSOPage from "./pages/ApproveRSOPage";
 import EventComments from "./pages/EventComments";
+import MyRSOsPage from "./pages/RSOListPage"; // Adjust path if needed
 import "./App.css";
 import { useEffect } from "react";
 
@@ -53,6 +54,7 @@ function App() {
           <Route path="/student" element={<StudentPage />} />
           <Route path="/rso" element={<RSOPage />} />
           <Route path="/approve-rsos" element={<ApproveRSOPage />} />
+          <Route path="/my-rsos" element={<MyRSOsPage user={user} />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

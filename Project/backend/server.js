@@ -406,6 +406,73 @@ app.post('/api/rso/approve', authenticateToken, async (req, res) => {
   }
 });
 
+// POST /api/rso/join (Adds user to an RSO)
+app.post('/api/rso/join', authenticateToken, async (req, res) => {
+  const { rso_id } = req.body;
+  const { userId } = req.user;
+
+  try {
+    const [userRows] = await pool.query(
+      'SELECT email FROM users WHERE user_id = ?',
+      [userId]
+    );
+
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const email = userRows[0].email;
+    await pool.query(
+      'INSERT INTO rso_members (rso_id, user_id, email) VALUES (?, ?, ?)',
+      [rso_id, userId, email]
+    );
+
+    res.json({ message: "Joined RSO successfully" });
+  } catch (error) {
+    console.error("RSO join error:", error);
+    res.status(500).json({ error: "Failed to join RSO" });
+  }
+});
+
+
+// POST /api/rso/leave (Removes user from an RSO)
+app.post('/api/rso/leave', authenticateToken, async (req, res) => {
+  const { rso_id } = req.body;
+  const { userId } = req.user;
+
+  try {
+    const [result] = await pool.query(
+      'DELETE FROM rso_members WHERE rso_id = ? AND user_id = ?',
+      [rso_id, userId]
+    );
+
+    if (result.affectedRows === 0) return res.status(404).json({ error: "Not a member of this RSO." });
+
+    res.json({ message: "Left RSO successfully." });
+  } catch (err) {
+    console.error("Leave RSO error:", err);
+    res.status(500).json({ error: "Failed to leave RSO." });
+  }
+});
+
+// GET /api/rsos (Loads all RSOs that are approved)
+app.get('/api/rsos', authenticateToken, async (req, res) => {
+  const { userId } = req.user;
+
+  try {
+    const [rsos] = await pool.query(`
+      SELECT r.rso_id, r.name, r.status,
+        EXISTS(SELECT 1 FROM rso_members rm WHERE rm.rso_id = r.rso_id AND rm.user_id = ?) AS is_member
+      FROM rsos r
+      WHERE r.status = 'approved'
+    `, [userId]);
+
+    res.json(rsos);
+  } catch (err) {
+    console.error("Fetch RSOs error:", err);
+    res.status(500).json({ error: "Failed to load RSOs" });
+  }
+});
 
 // GET /api/rso.pending (Loads all pending RSOs)
 app.get('/api/rso/pending', authenticateToken, async (req, res) => {

@@ -15,6 +15,13 @@ function Navbar({ user, setUser }) {
             ) : (
               <Link to="/rso" className="nav-link">Create RSO</Link>
             )}
+            {user.role === "student" && (
+              location.pathname === "/my-rsos" ? (
+                <Link to="/student" className="nav-link">Dashboard</Link>
+              ) : (
+                <Link to="/my-rsos" className="nav-link">My RSOs</Link>
+              )
+            )}
             {user?.role === "super_admin" && (
               location.pathname === "/approve-rsos" ? (
                 <Link to="/superadmin" className="nav-link">Dashboard</Link>
@@ -43,6 +50,5 @@ function Navbar({ user, setUser }) {
     </nav>
   );
 }
-
 
 export default Navbar;
