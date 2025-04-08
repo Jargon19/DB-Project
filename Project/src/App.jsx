@@ -10,14 +10,25 @@ import AdminPage from "./pages/AdminPage";
 import StudentPage from "./pages/StudentPage";
 import RSOPage from "./pages/RSOPage";
 import ApproveRSOPage from "./pages/ApproveRSOPage";
+import EventComments from "./pages/EventComments";
 import "./App.css";
 import { useEffect } from "react";
 
 // Main App component
 function App() {
   const [user, setUser] = useState(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setCheckingAuth(false);
+  }, []);
 
   const ProtectedLayout = () => {
+    if (checkingAuth) return null; // Or a loader
     if (!user) {
       return <Navigate to="/login" replace />;
     }
@@ -34,6 +45,7 @@ function App() {
         
         <Route element={<ProtectedLayout />}>
           <Route path="/dashboard" element={<Dashboard user={user} />} />
+          <Route path="/events/:id/comments" element={<EventComments />} />
 
           {/* Role-based dashboards */}
           <Route path="/superadmin" element={<SuperAdminPage />} />

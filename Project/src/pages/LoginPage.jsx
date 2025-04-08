@@ -40,6 +40,8 @@ function LoginPage({ setUser }) {
         universityName: data.university_name,
       });
 
+      localStorage.setItem("user", JSON.stringify(data));
+
       // Navigate based on role
       switch (data.role) {
         case "super_admin":

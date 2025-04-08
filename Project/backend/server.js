@@ -42,7 +42,7 @@ pool.getConnection()
     console.error('Database connection failed:', err);
   });
 
-// POST /api/auth/register
+// POST /api/auth/register (Register)
 app.post('/api/auth/register', async (req, res) => {
   const { username, name, email, password, confirmPassword, role, university_id } = req.body;
 
@@ -79,7 +79,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// POST /api/auth/login
+// POST /api/auth/login (Login)
 app.post('/api/auth/login', async (req, res) => {
   const { username, password, role} = req.body;
 
@@ -126,7 +126,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// POST /api/events/create
+// POST /api/events/create (Creating Event)
 app.post('/api/events/create', authenticateToken, async (req, res) => {
   const { name, description, location, datetime, category, contactPhone, contactEmail, visibility } = req.body;
 
@@ -153,7 +153,7 @@ app.post('/api/events/create', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/events/get
+// GET /api/events/get (Loading All Events)
 app.get('/api/events/get', authenticateToken, async (req, res) => {
   const { userId, universityId } = req.user;
 
@@ -191,7 +191,82 @@ app.get('/api/events/get', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/universities/create
+// GET /api/events/:id (Loading Specific Event)
+app.get('/api/events/:id', authenticateToken, async (req, res) => {
+  const [rows] = await pool.query('SELECT * FROM events WHERE event_id = ?', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Event not found' });
+  res.json(rows[0]);
+});
+
+// GET /api/comments/:event_id (Loading Comments)
+app.get('/api/comments/:event_id', authenticateToken, async (req, res) => {
+  const [comments] = await pool.query(
+    `
+    SELECT c.comment_id, c.event_id, c.user_id, u.username, c.comment_text, c.created_at
+    FROM comments c
+    JOIN users u ON c.user_id = u.user_id
+    WHERE c.event_id = ?
+    ORDER BY c.created_at DESC
+    `,
+    [req.params.event_id]
+  );
+  res.json(comments);
+});
+
+
+// POST /api/comments/:event_id (Adding Comments)
+app.post('/api/comments/:event_id', authenticateToken, async (req, res) => {
+  const { comment_text } = req.body;
+  const user_id = req.user.userId;
+
+  const [result] = await pool.query(
+    `INSERT INTO comments (event_id, user_id, comment_text, created_at)
+     VALUES (?, ?, ?, NOW())`,
+    [req.params.event_id, user_id, comment_text]
+  );
+
+  res.status(201).json({
+    comment_id: result.insertId,
+    event_id: req.params.event_id,
+    user_id,
+    comment_text,
+    created_at: new Date()
+  });
+});
+
+// DELETE /api/comments/:comment_id (Deleting Comments)
+app.delete('/api/comments/:comment_id', authenticateToken, async (req, res) => {
+  const user_id = req.user.userId;
+  const comment_id = req.params.comment_id;
+
+  const [rows] = await pool.query('SELECT * FROM comments WHERE comment_id = ?', [comment_id]);
+  if (!rows.length || rows[0].user_id !== user_id) {
+    return res.status(403).json({ error: "Not authorized to delete this comment" });
+  }
+
+  await pool.query('DELETE FROM comments WHERE comment_id = ?', [comment_id]);
+  res.json({ message: "Comment deleted" });
+});
+
+// PUT /api/comments/:comment_id (Editing Comments)
+app.put('/api/comments/:comment_id', authenticateToken, async (req, res) => {
+  const { comment_text } = req.body;
+  const { comment_id } = req.params;
+  const user_id = req.user.userId;
+
+  if (!comment_text) return res.status(400).json({ error: "Comment text is required" });
+
+  // Make sure the comment belongs to this user
+  const [rows] = await pool.query('SELECT * FROM comments WHERE comment_id = ?', [comment_id]);
+  if (!rows.length) return res.status(404).json({ error: "Comment not found" });
+  if (rows[0].user_id !== user_id) return res.status(403).json({ error: "Unauthorized" });
+
+  await pool.query('UPDATE comments SET comment_text = ? WHERE comment_id = ?', [comment_text, comment_id]);
+
+  res.json({ message: "Comment updated" });
+});
+
+// POST /api/universities/create (Create University - for Superadmin)
 app.post('/api/universities/create', async (req, res) => {
   const { name, location, description, students } = req.body;
 
@@ -213,7 +288,7 @@ app.post('/api/universities/create', async (req, res) => {
   }
 });
 
-// POST /api/rso/create
+// POST /api/rso/create (Create RSO - makes it pending)
 app.post('/api/rso/create', authenticateToken, async (req, res) => {
   const { name, description } = req.body;
   const { userId, universityId } = req.user;
@@ -245,7 +320,7 @@ app.post('/api/rso/create', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/rso/approve
+// POST /api/rso/approve (Approve RSA - for Superadmins)
 app.post('/api/rso/approve', authenticateToken, async (req, res) => {
   const { rsoId } = req.body;
   const { role } = req.user;
@@ -273,7 +348,7 @@ app.post('/api/rso/approve', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/rso.pending
+// GET /api/rso.pending (Loads all pending RSOs)
 app.get('/api/rso/pending', authenticateToken, async (req, res) => {
   const { role } = req.user;
 

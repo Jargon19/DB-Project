@@ -51,6 +51,12 @@ function StudentPage() {
               <p><strong>Location:</strong> {event.location_name}</p>
               <p><strong>Time:</strong> {new Date(event.event_time).toLocaleString()}</p>
               <p>{event.description}</p>
+              <button
+                onClick={() => window.location.href = `/events/${event.event_id}/comments`}
+                style={{ marginTop: "0.5rem" }}
+              >
+                💬 Comment
+              </button>
             </li>
           ))}
         </ul>
