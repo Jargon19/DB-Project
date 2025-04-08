@@ -22,7 +22,16 @@ function Navbar({ user, setUser }) {
                 <Link to="/approve-rsos" className="nav-link">Approve RSOs</Link>
               )
             )}
-            <button className="logout-button" onClick={() => setUser(null)}>Logout</button>
+            <button
+              className="logout-button"
+              onClick={() => {
+                setUser(null);
+                localStorage.removeItem("user");
+                localStorage.removeItem("accessToken");
+              }}
+            >
+              Logout
+            </button>
           </>
         ) : (
           <>

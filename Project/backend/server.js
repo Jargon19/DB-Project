@@ -44,17 +44,22 @@ pool.getConnection()
 
 // POST /api/auth/register (Register)
 app.post('/api/auth/register', async (req, res) => {
-  const { username, name, email, password, confirmPassword, role, university_id } = req.body;
+  const { username, name, email, password, confirmPassword, role, university_name } = req.body;
 
   console.log('Register body:', req.body);
 
-  if (!name || !email || !password || !role || !university_id || !username) {
+  if (!name || !email || !password || !role || !university_name || !username) {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
   try {
-    const [university] = await pool.query('SELECT 1 FROM universities WHERE university_id = ?', [university_id]);
-    if (!university) return res.status(400).json({ error: 'Invalid university' });
+    const [uniRows] = await pool.query(
+      'SELECT university_id FROM universities WHERE LOWER(name) = ?',
+      [university_name.toLowerCase()]
+    );
+    
+    if (!uniRows.length) return res.status(400).json({ error: 'University not found' });
+    const university_id = uniRows[0].university_id;
 
     const [existing] = await pool.query('SELECT 1 FROM users WHERE email = ?', [email]);
     if (existing.length > 0) return res.status(400).json({ error: 'Email already exists' });
@@ -66,12 +71,24 @@ app.post('/api/auth/register', async (req, res) => {
       [username, name, email, hashedPassword, role, university_id]
     );
 
+    const payload = {
+      userId: result.insertId,
+      role,
+      universityId: university_id
+    };
+    
+    const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+    
     res.status(201).json({
       id: result.insertId,
       name,
       email,
-      role
+      role,
+      username,
+      university_id,
+      accessToken
     });
+    
     
   } catch (error) {
     console.error('Registration error:', error);
@@ -126,11 +143,23 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// POST /api/events/create (Creating Event)
+// POST /api/events/create (Creating Event - SHOW IN DEMO)
 app.post('/api/events/create', authenticateToken, async (req, res) => {
-  const { name, description, location, datetime, category, contactPhone, contactEmail, visibility } = req.body;
+  const { name, description, location, datetime, category, contactPhone, contactEmail, visibility, rsoName } = req.body;
 
   console.log("🧾 Incoming event data:", req.body);
+
+  let rsoId = null;
+  if (visibility === "RSO") {
+    const [rsoRows] = await pool.query(
+      'SELECT rso_id FROM rsos WHERE name = ? AND status = ?',
+      [rsoName, "approved"]
+    );
+    if (rsoRows.length === 0) {
+      return res.status(400).json({ error: "RSO not found or approved." });
+    }
+    rsoId = rsoRows[0].rso_id;
+  }  
 
   const { userId, universityId } = req.user;
 
@@ -139,12 +168,22 @@ app.post('/api/events/create', authenticateToken, async (req, res) => {
   }
 
   try {
+    // THIS IS USED TO PREVENT OVERLAPPING EVENTS - SHOW IN DEMO
+    const [overlaps] = await pool.query(
+      `SELECT 1 FROM events WHERE location_name = ? AND event_time = ?`,
+      [location, datetime]
+    );
+    if (overlaps.length > 0) {
+      return res.status(409).json({ error: "An event already exists at this time and location." });
+    }
+
     const [result] = await pool.query(
       `INSERT INTO events 
-        (name, description, location_name, event_time, category, contact_phone, contact_email, visibility, admin_id, university_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, description, location, datetime, category, contactPhone, contactEmail, visibility, userId, universityId]
+        (name, description, location_name, event_time, category, contact_phone, contact_email, visibility, admin_id, university_id, rso_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name, description, location, datetime, category, contactPhone, contactEmail, visibility, userId, universityId, rsoId]
     );
+    
 
     res.status(201).json({ message: "Event created successfully", eventId: result.insertId });
   } catch (error) {
@@ -212,7 +251,6 @@ app.get('/api/comments/:event_id', authenticateToken, async (req, res) => {
   );
   res.json(comments);
 });
-
 
 // POST /api/comments/:event_id (Adding Comments)
 app.post('/api/comments/:event_id', authenticateToken, async (req, res) => {
@@ -285,6 +323,17 @@ app.post('/api/universities/create', async (req, res) => {
   } catch (error) {
     console.error("University creation error:", error);
     res.status(500).json({ error: "Failed to create university" });
+  }
+});
+
+// GET /api/universities (Loads universities - for Register page)
+app.get('/api/universities', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT university_id, name FROM universities ORDER BY name ASC');
+    res.json(rows);
+  } catch (error) {
+    console.error("Error fetching universities:", error);
+    res.status(500).json({ error: "Failed to load universities" });
   }
 });
 

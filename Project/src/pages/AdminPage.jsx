@@ -14,6 +14,8 @@ function AdminPage() {
   });
 
   const [message, setMessage] = useState("");
+  const [rsoName, setRsoName] = useState("");
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,7 +35,10 @@ function AdminPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(eventData),
+        body: JSON.stringify({
+          ...eventData,
+          rsoName: eventData.visibility === "RSO" ? rsoName : null
+        })        
       });
 
       const data = await response.json();
@@ -83,6 +88,16 @@ function AdminPage() {
             <option value="private">Private</option>
             <option value="RSO">RSO</option>
           </select>
+          {eventData.visibility === "RSO" && (
+            <input
+              type="text"
+              name="rsoName"
+              placeholder="Enter RSO Name"
+              value={rsoName}
+              onChange={(e) => setRsoName(e.target.value)}
+              required
+            />
+          )}
           <input
             type="text"
             name="location"

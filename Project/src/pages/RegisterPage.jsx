@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/AuthPages.css";
 
@@ -10,12 +10,28 @@ function RegisterPage({ setUser }) {
     password: "",
     confirmPassword: "",
     role: "student",
-    university_id: "",
+    university_name: "",
   });
 
+  const [universities, setUniversities] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        const res = await fetch("/api/universities");
+        const data = await res.json();
+        setUniversities(data);
+      } catch (err) {
+        console.error("Failed to load universities:", err);
+      }
+    };
+  
+    fetchUniversities();
+  }, []);
+  
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -42,13 +58,16 @@ function RegisterPage({ setUser }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Registration failed");
 
-      setUser(data);
+      localStorage.setItem("accessToken", data.accessToken);
+      localStorage.setItem("user", JSON.stringify(data));
 
+      setUser(data);
+  
       // Redirect based on role
       switch (formData.role) {
         case "super_admin":
-          navigate("/superadmin");
-          break;
+        navigate("/superadmin");
+        break;
         case "admin":
           navigate("/admin");
           break;
@@ -124,14 +143,19 @@ function RegisterPage({ setUser }) {
             <option value="admin">Admin</option>
             <option value="super_admin">Super Admin</option>
           </select>
-          <input
-            type="text"
-            name="university_id"
-            placeholder="University ID"
-            value={formData.university_id}
+          <select
+            name="university_name"
+            value={formData.university_name}
             onChange={handleChange}
             required
-          />
+          >
+            <option value="">Select a University</option>
+            {universities.map((uni) => (
+              <option key={uni.university_id} value={uni.name}>
+                {uni.name}
+              </option>
+            ))}
+          </select>
           <button type="submit" disabled={loading}>
             {loading ? "Registering..." : "REGISTER"}
           </button>
