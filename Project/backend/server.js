@@ -98,11 +98,11 @@ app.post('/api/auth/register', async (req, res) => {
 
 // POST /api/auth/login (Login)
 app.post('/api/auth/login', async (req, res) => {
-  const { username, password, role} = req.body;
+  const { username, password} = req.body;
 
   console.log('Login request body:', req.body);
 
-  if (!username || !password || !role) {
+  if (!username || !password) {
     return res.status(400).json({ error: 'Email, password and role are required' });
   }
 
@@ -197,7 +197,7 @@ app.get('/api/events/get', authenticateToken, async (req, res) => {
   const { userId, universityId } = req.user;
 
   // This is for when we add RSOs
-  /* try {
+  try {
     const [events] = await pool.query(
       `
       SELECT DISTINCT e.*
@@ -209,19 +209,6 @@ app.get('/api/events/get', authenticateToken, async (req, res) => {
         OR (e.visibility = 'RSO' AND rm.user_id = ?)
       `,
       [universityId, userId]
-    ); */
-
-
-  try {
-    const [events] = await pool.query(
-      `
-      SELECT *
-      FROM events
-      WHERE 
-        visibility = 'public'
-        OR (visibility = 'private' AND university_id = ?)
-      `,
-      [universityId]
     );
     res.json(events);
   } catch (err) {
@@ -339,35 +326,57 @@ app.get('/api/universities', async (req, res) => {
 
 // POST /api/rso/create (Create RSO - makes it pending)
 app.post('/api/rso/create', authenticateToken, async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, members } = req.body;
   const { userId, universityId } = req.user;
 
-  if (!name || !description) {
-    return res.status(400).json({ error: "RSO name and description are required." });
+  if (!name || !description || !members || !Array.isArray(members)) {
+    return res.status(400).json({ error: "RSO name, description, and members are required." });
+  }
+
+  if (members.length < 4) {
+    return res.status(400).json({ error: "Requires at least 5 total members." });
   }
 
   try {
-    const [existing] = await pool.query(
-      "SELECT 1 FROM rsos WHERE name = ?",
-      [name]
-    );
+    const [[adminUser]] = await pool.query(`SELECT email FROM users WHERE user_id = ?`, [userId]);
+    const adminEmail = adminUser.email;
+    const emailDomain = adminEmail.split('@')[1];
+
+    const allEmails = [adminEmail, ...members];
+    const invalidEmails = allEmails.filter(email => !email.endsWith(`@${emailDomain}`));
+    if (invalidEmails.length > 0) {
+      return res.status(400).json({ error: "Members must have the same email domain." });
+    }
+
+    const [existing] = await pool.query(`SELECT 1 FROM rsos WHERE name = ?`, [name]);
     if (existing.length > 0) {
       return res.status(409).json({ error: "RSO name already exists." });
     }
 
-    // change status from pending to approved later
-    const [result] = await pool.query(
-      `INSERT INTO rsos (name, admin_id, university_id, status)
-       VALUES (?, ?, ?, ?)`,
+    const [rsoInsert] = await pool.query(
+      `INSERT INTO rsos (name, admin_id, university_id, status) VALUES (?, ?, ?, ?)`,
       [name, userId, universityId, "pending"]
     );
+    const rsoId = rsoInsert.insertId;
 
-    res.status(201).json({ message: "RSO created successfully. Waiting for approval by super admin.", rsoId: result.insertId });
+    for (const email of allEmails) {
+      const [[existingUser]] = await pool.query(`SELECT user_id FROM users WHERE email = ?`, [email]);
+      const user_id = existingUser ? existingUser.user_id : null;
+
+      await pool.query(
+        `INSERT INTO rso_members (rso_id, email, user_id) VALUES (?, ?, ?)`,
+        [rsoId, email, user_id]
+      );
+    }
+
+    res.status(201).json({ message: "✅ RSO created and members added. Awaiting super admin approval.", rsoId });
+
   } catch (err) {
     console.error("RSO creation error:", err);
     res.status(500).json({ error: "Failed to create RSO" });
   }
 });
+
 
 // POST /api/rso/approve (Approve RSA - for Superadmins)
 app.post('/api/rso/approve', authenticateToken, async (req, res) => {
@@ -397,6 +406,7 @@ app.post('/api/rso/approve', authenticateToken, async (req, res) => {
   }
 });
 
+
 // GET /api/rso.pending (Loads all pending RSOs)
 app.get('/api/rso/pending', authenticateToken, async (req, res) => {
   const { role } = req.user;
@@ -407,9 +417,10 @@ app.get('/api/rso/pending', authenticateToken, async (req, res) => {
 
   try {
     const [rsos] = await pool.query(
-      `SELECT rso_id, name, admin_id, university_id, status
-       FROM rsos
-       WHERE status = 'pending'`
+      `SELECT r.rso_id, r.name, r.admin_id, r.university_id, u.name AS university_name
+       FROM rsos r
+       JOIN universities u ON r.university_id = u.university_id
+       WHERE r.status = 'pending'`
     );
 
     res.json(rsos);
@@ -418,6 +429,7 @@ app.get('/api/rso/pending', authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch RSOs" });
   }
 });
+
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization;

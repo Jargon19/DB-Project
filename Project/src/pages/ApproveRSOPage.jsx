@@ -48,10 +48,10 @@ function ApproveRSOs() {
           <ul>
             {rsos.map((rso) => (
               <li key={rso.rso_id} style={{ marginBottom: "1rem" }}>
-                <strong>{rso.name}</strong> (University ID: {rso.university_id})
-                <br />
-                <button onClick={() => handleApprove(rso.rso_id)}>Approve</button>
-              </li>
+              <strong>{rso.name}</strong> ({rso.university_name})
+              <br />
+              <button onClick={() => handleApprove(rso.rso_id)}>Approve</button>
+            </li>            
             ))}
           </ul>
         )}

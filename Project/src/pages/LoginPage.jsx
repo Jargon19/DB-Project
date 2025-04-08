@@ -5,7 +5,6 @@ import "../styles/AuthPages.css";
 function LoginPage({ setUser }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("student"); // Default
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -19,7 +18,7 @@ function LoginPage({ setUser }) {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, role }),
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await response.json();
@@ -86,11 +85,6 @@ function LoginPage({ setUser }) {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <select value={role} onChange={(e) => setRole(e.target.value)} required>
-            <option value="student">Student</option>
-            <option value="admin">Admin</option>
-            <option value="super_admin">Super Admin</option>
-          </select>
           <button type="submit" disabled={loading}>
             {loading ? "Logging in..." : "LOGIN"}
           </button>
