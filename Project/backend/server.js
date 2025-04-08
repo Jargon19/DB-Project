@@ -369,7 +369,7 @@ app.post('/api/rso/create', authenticateToken, async (req, res) => {
       );
     }
 
-    res.status(201).json({ message: "✅ RSO created and members added. Awaiting super admin approval.", rsoId });
+    res.status(201).json({ message: "✅ RSO created, awaiting super admin approval.", rsoId });
 
   } catch (err) {
     console.error("RSO creation error:", err);

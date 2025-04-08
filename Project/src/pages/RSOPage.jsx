@@ -44,7 +44,7 @@ function CreateRSOPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Creation failed.");
       
-      setMessage("✅ RSO created successfully!");
+      setMessage("✅ RSO created, awaiting super admin approval.");
       setName("");
       setDescription("");
       setMembers([""]);
