@@ -20,7 +20,7 @@ function RSOListPage() {
     setMessage("");
     try {
       const endpoint = isJoining ? "/api/rso/join" : "/api/rso/leave";
-
+  
       const res = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -29,22 +29,28 @@ function RSOListPage() {
         },
         body: JSON.stringify({ rso_id }),
       });
-
+  
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
-
-      // Update membership status in frontend
-      setRsos((prev) =>
-        prev.map((rso) =>
-          rso.rso_id === rso_id ? { ...rso, is_member: isJoining ? 1 : 0 } : rso
-        )
-      );
-
+  
+      // Handle special case: RSO deleted
+      if (data.message?.includes("RSO has been deleted")) {
+        setRsos((prev) => prev.filter((rso) => rso.rso_id !== rso_id));
+      } else {
+        // Update membership status
+        setRsos((prev) =>
+          prev.map((rso) =>
+            rso.rso_id === rso_id ? { ...rso, is_member: isJoining ? 1 : 0 } : rso
+          )
+        );
+      }
+  
       setMessage(data.message);
     } catch (err) {
       setMessage("❌ " + err.message);
     }
   };
+  
 
   return (
     <div className="auth-container">

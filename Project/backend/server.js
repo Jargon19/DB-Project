@@ -152,14 +152,21 @@ app.post('/api/events/create', authenticateToken, async (req, res) => {
   let rsoId = null;
   if (visibility === "RSO") {
     const [rsoRows] = await pool.query(
-      'SELECT rso_id FROM rsos WHERE name = ? AND status = ?',
+      'SELECT rso_id, admin_id FROM rsos WHERE name = ? AND status = ?',
       [rsoName, "approved"]
     );
+
     if (rsoRows.length === 0) {
       return res.status(400).json({ error: "RSO not found or approved." });
     }
-    rsoId = rsoRows[0].rso_id;
-  }  
+
+    const rso = rsoRows[0];
+    if (rso.admin_id !== req.user.userId) {
+      return res.status(403).json({ error: "Only the RSO admin can create events for this RSO." });
+    }
+    rsoId = rso.rso_id;
+  }
+
 
   const { userId, universityId } = req.user;
 
@@ -438,22 +445,41 @@ app.post('/api/rso/join', authenticateToken, async (req, res) => {
 // POST /api/rso/leave (Removes user from an RSO)
 app.post('/api/rso/leave', authenticateToken, async (req, res) => {
   const { rso_id } = req.body;
-  const { userId } = req.user;
+  const user_id = req.user.userId;
+
+  if (!rso_id) return res.status(400).json({ error: "Missing RSO ID" });
 
   try {
-    const [result] = await pool.query(
-      'DELETE FROM rso_members WHERE rso_id = ? AND user_id = ?',
-      [rso_id, userId]
+    // Step 1: Remove the user from the RSO
+    await pool.query(
+      "DELETE FROM rso_members WHERE rso_id = ? AND user_id = ?",
+      [rso_id, user_id]
     );
 
-    if (result.affectedRows === 0) return res.status(404).json({ error: "Not a member of this RSO." });
+    // Step 2: Count remaining members
+    const [memberCountRows] = await pool.query(
+      "SELECT COUNT(*) AS count FROM rso_members WHERE rso_id = ?",
+      [rso_id]
+    );
 
-    res.json({ message: "Left RSO successfully." });
+    const memberCount = memberCountRows[0].count;
+
+    // Step 3: If under 5, delete the RSO and its members
+    if (memberCount < 5) {
+      await pool.query("DELETE FROM rsos WHERE rso_id = ?", [rso_id]);
+      await pool.query("DELETE FROM rso_members WHERE rso_id = ?", [rso_id]);
+
+      return res.json({ message: "You left the RSO. RSO has been deleted due to insufficient members." });
+    }
+
+    res.json({ message: "You have left the RSO." });
+
   } catch (err) {
     console.error("Leave RSO error:", err);
-    res.status(500).json({ error: "Failed to leave RSO." });
+    res.status(500).json({ error: "Failed to leave RSO" });
   }
 });
+
 
 // GET /api/rsos (Loads all RSOs that are approved)
 app.get('/api/rsos', authenticateToken, async (req, res) => {
